@@ -28,6 +28,7 @@ void	clear_client(t_client* list)
 	{
 		tmp = (*list).next;
 		free(list);
+		list = tmp;
 	}
 }
 
@@ -102,14 +103,16 @@ int		remove_client(t_client** list, int fd)
 
 void	send_all(t_client* list, char* str, int fd)
 {
-	(void)list;
-	(void)fd;
+	size_t	len;
+
+	len = strlen(str);
 	while (list != NULL)
 	{
 		if ((*list).fd != fd)
-			send((*list).fd, str, strlen(str), 0);
+			send((*list).fd, str, len, 0);
 		list = (*list).next;
 	}
+	write(1, str, len);
 }
 
 int extract_message(char **buf, char **msg)
@@ -181,8 +184,9 @@ int main(int argc, char** argv) {
 	struct timeval	timeout;
 	t_client*	clients;
 	t_client*	tmp;
-	char	buff[4096];
-	char	str[4096];
+	char	*buff;
+	char	str[4200];
+	char*	msg;
 	ssize_t	size;
 
 	if (argc != 2)
@@ -228,6 +232,13 @@ int main(int argc, char** argv) {
 	{
 		write(2, "Fatal error\n", 12); 
 		close(sockfd);
+		exit(1);
+	}
+	if ((buff = malloc(4096)) == NULL)
+	{
+		write(2, "Fatal error\n", 12);
+		close(sockfd);
+		free(clients);
 		exit(1);
 	}
 	len = sizeof(cli);
@@ -278,8 +289,12 @@ int main(int argc, char** argv) {
 						}
 						else
 						{
-							sprintf(str, "client %d: %.*s", id, (int)size, buff);
-							send_all(clients, str, connfd);
+							msg = NULL;
+							while (extract_message(&buff, &msg))
+							{
+								sprintf(str, "client %d: %s", id, msg);
+								send_all(clients, str, connfd);
+							}
 						}
 					}
 				}
