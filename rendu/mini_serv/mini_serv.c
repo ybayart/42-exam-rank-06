@@ -27,6 +27,7 @@ void	clear_client(t_client* list)
 	while (list != NULL)
 	{
 		tmp = (*list).next;
+		close((*list).fd);
 		free(list);
 		list = tmp;
 	}
@@ -277,7 +278,7 @@ int main(int argc, char** argv) {
 					if (FD_ISSET(connfd, &set_read))
 					{
 						size = recv(connfd, buff, 4096, 0);
-						if (size <= 0) // Disconnected
+						if (size == 0) // Disconnected
 						{
 							id = remove_client(&clients, connfd);
 							if (id != -1)
@@ -287,7 +288,7 @@ int main(int argc, char** argv) {
 								send_all(clients, str, connfd);
 							}
 						}
-						else
+						else if (size > 0)
 						{
 							msg = NULL;
 							while (extract_message(&buff, &msg))
